@@ -9,7 +9,20 @@ namespace CurveRendering
     [ExecuteInEditMode]
     public class CurveTrack : MonoBehaviour
     {
+        public class Segment
+        {
+            public int startIndex;
+            public int stepCount;
+            public int totalStepCount;
+        }
 
+        public GameObject animatedTarget;
+        [Min(1.0f)]public float totalTime;
+        private float m_CurrentTime = 0;
+
+        private List<Segment> m_Segments = new();
+        private int m_TotalStepCount = 0;
+        
         public enum CurveType
         {
             CatmullRomSplines
@@ -74,6 +87,93 @@ namespace CurveRendering
         [Range(0, 1)] public float smoothness = 0f;
         private float m_OldSmoothness = 0f;
 
+        private void Start()
+        {
+            RefreshSegments();
+        }
+
+        private void RefreshSegments()
+        {
+            switch (type)
+            {
+                case CurveType.CatmullRomSplines:
+                    InitCatmullRomSegments();
+                    break;
+            }
+        }
+
+        private void Animate()
+        {
+            if (animatedTarget == null)
+            {
+                return;
+            }
+
+            if (m_Segments.Count <= 0)
+            {
+                return;
+            }
+
+            if (m_TotalStepCount <= 0)
+            {
+                return;
+            }
+
+            m_CurrentTime += Time.deltaTime;
+            m_CurrentTime = m_CurrentTime % totalTime;
+
+            var progress = m_CurrentTime / totalTime;
+            var currentSteps = progress * m_TotalStepCount;
+            var currentTotal = 0;
+            int index = 0;
+            for (int i = 0; i < m_Segments.Count; i++)
+            {
+                var segment = m_Segments[i];
+                if (currentSteps < segment.totalStepCount)
+                {
+                    currentTotal = segment.stepCount;
+                    index = segment.startIndex;
+                    if (i > 0)
+                    {
+                        currentSteps -= m_Segments[i - 1].totalStepCount;
+                    }
+                    break;
+                }
+            }
+
+            if (index > 0 && currentTotal > 0)
+            {
+                var position = CurveUtils.EvalCatmullRomSplines(currentSteps / currentTotal, points[index - 1],
+                    points[index], points[index + 1], points[index + 2]);
+                animatedTarget.transform.position = position;
+            }
+        }
+
+        private void InitCatmullRomSegments()
+        {
+            if (points.Count < CurveUtils.k_CatmullRomPointCountLimit)
+            {
+                return;
+            }
+
+            m_Segments.Clear();
+            m_TotalStepCount = 0;
+            for (int i = 1; i < points.Count - 2; ++i)
+            {
+                var startPoint = points[i];
+                var endPoint = points[i + 1];
+                var distance = Vector3.Distance(startPoint, endPoint);
+                var stepCount = CurveUtils.EvalStepCount(distance, smoothness);
+                m_TotalStepCount += stepCount;
+                m_Segments.Add(new Segment()
+                {
+                    startIndex = i,
+                    stepCount = stepCount,
+                    totalStepCount = m_TotalStepCount
+                });
+            }
+        }
+
         private void OnEnable()
         {
             SceneView.duringSceneGui -= DuringSceneGUI;
@@ -106,7 +206,10 @@ namespace CurveRendering
                 m_OldType = type;
                 m_OldSmoothness = smoothness;
                 EvalCurvePoints();
+                RefreshSegments();
             }
+            
+            Animate();
         }
 
         public void EvalCurvePoints()

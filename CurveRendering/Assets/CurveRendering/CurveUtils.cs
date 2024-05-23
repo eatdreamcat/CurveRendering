@@ -38,7 +38,7 @@ namespace CurveRendering
             return s_InvalidPoint;
         }
         
-        private static readonly float k_Step = 0.05f;
+        private static readonly float k_Step = 0.1f;
 
         public static int EvalStepCount(float maxDistance, float smoothness)
         {
@@ -78,6 +78,14 @@ namespace CurveRendering
             var tVector = new Vector4(1, t, t2, t2 * t);
             tVector = k_CatmullRomCoefficient * tVector;
             return geometry * tVector;
+        }
+
+        public static Vector3 EvalCatmullRomSplines(float t, Vector3 g1, Vector3 g2, Vector3 g3, Vector4 g4)
+        {
+            return EvalCatmullRomSplines(
+                t,
+                BuildCatmullRomGeometry(g1, g2, g3, g4)
+                );
         }
     }
 }
