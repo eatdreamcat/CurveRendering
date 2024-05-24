@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -7,7 +8,7 @@ namespace CurveRendering
     using Point = Vector3;
     public static class CurveUtils
     {
-        private static readonly Point s_InvalidPoint = new(float.NaN, float.NaN, float.NaN);
+        public static readonly Point s_InvalidPoint = new(float.NaN, float.NaN, float.NaN);
 
         public static bool IsValid(this Point vector3)
         {
@@ -24,6 +25,24 @@ namespace CurveRendering
             }
 
             return s_InvalidPoint;
+        }
+
+
+        public static int FindNearestPointIndex(List<Point> points, Vector3 position)
+        {
+            float minDist = float.MaxValue;
+            int index = -1;
+            for (int i = 0; i < points.Count; i++)
+            {
+                var d = Vector3.Distance(position, points[i]);
+                if (d < minDist)
+                {
+                    minDist = d;
+                    index = i;
+                }
+            }
+
+            return index;
         }
 
         public static Point GetMouseLocalPosition(LayerMask layerMask, Vector2 mousePositionScreen,

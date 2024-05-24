@@ -92,6 +92,13 @@ namespace CurveRendering
             RefreshSegments();
         }
 
+        public void SetPoint(Vector3 position)
+        {
+            points[m_CurrentSelectedIndex] = position;
+            EvalCurvePoints();
+            RefreshSegments();
+        }
+
         private void RefreshSegments()
         {
             switch (type)
@@ -229,7 +236,7 @@ namespace CurveRendering
             {
                 return;
             }
-
+            
             for (int i = 1; i < points.Count - 2; ++i)
             {
                 var startPoint = points[i];
@@ -271,8 +278,35 @@ namespace CurveRendering
                 }
             }
         }
-        
 
+        private void OnDrawGizmos()
+        {
+            if (m_CurrentSelectedIndex >= 0)
+            {
+                EditorGUI.BeginChangeCheck();
+                var newPosition = Handles.PositionHandle(points[m_CurrentSelectedIndex], Quaternion.identity);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    points[m_CurrentSelectedIndex] = newPosition;
+                }
+            }
+        }
+
+        private int m_CurrentSelectedIndex = -1;
+
+        public Vector3 CurrentSelectedPoint
+        {
+            get
+            {
+                if (m_CurrentSelectedIndex < 0)
+                {
+                    return CurveUtils.s_InvalidPoint;
+                }
+
+                return points[m_CurrentSelectedIndex];
+            }
+        }
+        
         private void DuringSceneGUI(SceneView sceneView)
         {
             if (Selection.activeGameObject != gameObject)
@@ -310,6 +344,19 @@ namespace CurveRendering
                 {
                     points.Add(position);
                     EvalCurvePoints();
+                }
+            }
+
+            // m_CurrentSelectedIndex = -1;
+            // Shift + V + Left Click
+            if (m_CurrentKeyMap.IsMatch(KeyCode.LeftShift, KeyCode.V) && evt.button == 0 &&
+                evt.type == EventType.MouseDown && Selection.activeGameObject == gameObject)
+            {
+                var position =
+                    CurveUtils.GetMouseWorldPosition(rayCastLayer, evt.mousePosition, hitPointExpand);
+                if (position.IsValid())
+                {
+                    m_CurrentSelectedIndex = CurveUtils.FindNearestPointIndex(points, position);
                 }
             }
 
